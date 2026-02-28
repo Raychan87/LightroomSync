@@ -1,0 +1,7 @@
+{
+  "CheckInterval": 15,
+  "LocalPath": "E:\\Lightroom_SyDrive",
+  "RemoteName": "synology",
+  "RemotePath": "Lightroom",
+  "RclonePath": "C:\\Windows-Extras\\Programme\\rclone\\rclone.exe"
+}
