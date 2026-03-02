@@ -8,6 +8,11 @@ namespace LightroomSync
 {
     public class TrayIcon : ApplicationContext
     {
+        // Config
+        private const int WATCHDOG_TIME = 30000; // Sekunden
+        private const int DIFF_SEC = 5; // Sekunden
+
+        // Variablen
         private NotifyIcon trayIcon;
         private System.Windows.Forms.Timer timer;
         private AppConfig config;
@@ -17,9 +22,10 @@ namespace LightroomSync
         private Icon iconRed;
         private Icon iconBlue;
         private Icon iconYellow;
+        private Icon iconWhite;
 
         private string status = "Standby";
-        private bool isSyncing = false;
+//        private bool isSyncing = false;
         private bool lockWarDa = false;
 
         public TrayIcon()
@@ -58,6 +64,7 @@ namespace LightroomSync
             iconRed = CreateColoredIcon(Color.Red);
             iconBlue = CreateColoredIcon(Color.DodgerBlue);
             iconYellow = CreateColoredIcon(Color.Orange);
+            iconWhite = CreateColoredIcon(Color.White);
 
             // Tray-Icon
             trayIcon = new NotifyIcon()
@@ -101,6 +108,9 @@ namespace LightroomSync
         {
             try
             {
+                bool CatalogSyncStart = false;
+                string SyncDirection = "";
+
                 // ================= 1. LOCK PRÜFEN =================
                 if (Directory.Exists(config.LocalPath))
                 {
@@ -119,16 +129,16 @@ namespace LightroomSync
 
                 if (lockWarDa)
                 {
-                    Log.Warn("Lock entfernt - Sync wird fortgesetzt");
+                    Log.Info("Lock entfernt - Sync wird fortgesetzt");
                     lockWarDa = false;
                 }
 
                 // ================= 2. BEREITS SYNCING? =================
-        //        if (isSyncing)
-        //        {
-        //            SetStatus("Syncing");
-        //            return;
-        //        }
+           //     if (isSyncing)
+           //     {
+           //         SetStatus("Syncing");
+           //         return;
+           //     }
 
                 // ================= 3. NAS PRÜFEN =================
                 string remoteFull = config.RemoteName;
@@ -153,7 +163,7 @@ namespace LightroomSync
                 using (Process p = Process.Start(psi))
                 {
                     string output = p.StandardOutput.ReadToEnd();
-                    p.WaitForExit(5000);
+                    p.WaitForExit(WATCHDOG_TIME);
                     if (p.ExitCode != 0 || output.Length < 10)
                     {
                         Log.Warn("NAS-Verbindung fehlgeschlagen");
@@ -166,70 +176,92 @@ namespace LightroomSync
                 DateTime? localDate = GetLocalCatalogDate();
                 DateTime? remoteDate = GetRemoteCatalogDate();
 
-                Log.Info($"Check: Lokal={Log.FormatDateTime(localDate)} | NAS={Log.FormatDateTime(remoteDate)}");
+                // Änderungszeit von den Katalogen
+                Log.Debug($"Check: Lokal={Log.FormatDateTime(localDate)} | NAS={Log.FormatDateTime(remoteDate)}");                
 
-                bool mussSyncen = false;
-                string syncRichtung = "";
-
+                // Wenn lokal ein Katalog existiert, dann...
                 if (localDate != null)
                 {
+                    // Wenn Remote kein Katalog exestiert, dann
                     if (remoteDate == null)
                     {
                         Log.Info("Kein Remote-Katalog - Upload");
-                        mussSyncen = true;
-                        syncRichtung = "upload";
+                        CatalogSyncStart = true;
+                        SyncDirection = "upload";
+                    }
+                    // Wenn beide Kataloge exestieren, dann...
+                    else
+                    {
+                        // Berechne die Differenz der Änderungszeiten in Sekunden
+                        double diff = Math.Round(((DateTime)localDate - (DateTime)remoteDate).TotalSeconds, 0);
+
+                        if (diff > DIFF_SEC)
+                        {
+                            Log.Info("PC neuer -> Upload");
+                            CatalogSyncStart = true;
+                            SyncDirection = "upload";
+                        }
+                        else if (diff < -DIFF_SEC)
+                        {
+                            Log.Info("NAS neuer -> Download");
+                            CatalogSyncStart = true;
+                            SyncDirection = "download";
+                        }
+                    }
+                }
+                //Wenn lokal kein Katalog existiert, dann...
+                else
+                {
+                    // Wenn Remote ein Katalog exestiert, dann...
+                    if (remoteDate != null)
+                    {
+                        Log.Info("Kein Lokaler Katalog - Download");
+                        CatalogSyncStart = true;
+                        SyncDirection = "download";
                     }
                     else
                     {
-                        double diff = Math.Round(((DateTime)localDate - (DateTime)remoteDate).TotalSeconds, 0);
-
-                        if (diff > 5)
-                        {
-                            Log.Info("PC neuer -> Upload");
-                            mussSyncen = true;
-                            syncRichtung = "upload";
-                        }
-                        else if (diff < -5)
-                        {
-                            Log.Info("NAS neuer -> Download");
-                            mussSyncen = true;
-                            syncRichtung = "download";
-                        }
+                        Log.Error("Katalog Sync Start");
+                        SetStatus("Error");
                     }
                 }
 
-                // ================= 5. BACKUPS =================
-                // Backups wird NUR geprüft wenn kein Katalog-Sync nötig ist
-
-
-                // Backups sync
-                Log.Info("Check Backups (BISYNC)");
-                SyncBackups();
-
-
-                // ================= 6. ERST HIER: SYNC WENN NÖTIG =================
-                if (mussSyncen)
+                // ================= 5. SYNC KATALOG =================
+                if (CatalogSyncStart)
                 {
-                    // HIER erst Icon Gelb setzen
-                    isSyncing = true;
+                    Log.Debug("Katalog Sync Start");
+            //        isSyncing = true;
                     SetStatus("Syncing");
 
                     // Katalog sync
-                    if (localDate != null && (syncRichtung == "upload" || syncRichtung == "download"))
+                    if (localDate != null && (SyncDirection == "upload" || SyncDirection == "download"))
                     {
-                        RunRcloneSync(syncRichtung);
-                    }                    
+                        SyncCatalog(SyncDirection);
+                    }
 
-                    isSyncing = false;
-                    Log.Info("Check End");
+            //        isSyncing = false;
+                    CatalogSyncStart = false;
+                    Log.Debug("Katalog Sync End");
                     SetStatus("Standby");
                 }
-                else
-                {                    
-                    Log.Info("Check End");
-                    SetStatus("Standby");
+
+                // ================= 5.SYNC BACKUPS =================
+                // Wird geprüft ob Backups synchronisiert werden muss.
+                
+                Log.Debug("Check Backups Start"); 
+
+                if (CheckBackup())
+                {
+                    Log.Debug("Check Backups End");
+                    SetStatus("Syncing");
+                    Log.Debug("Backup Sync Start");
+                    SyncBackups();
+                    Log.Debug("Backup Sync End");
                 }
-            // ================= 7. Wenn ein Fehler passiert,... =================
+                Log.Info("Sync loop End");
+                SetStatus("Standby");
+
+                // ================= 7. Wenn ein Fehler passiert,... =================
             }
             catch (Exception ex)
             {
@@ -238,52 +270,9 @@ namespace LightroomSync
             }
         }
 
-        private bool CheckBackupsNeedSync()
+        private void SyncCatalog(string direction)
         {
-            // Prüfe ob Backups unterschiedlich sind
-            try
-            {
-                string remoteFull = config.RemoteName;
-                if (!string.IsNullOrEmpty(config.RemotePath))
-                    remoteFull += ":" + config.RemotePath;
-
-                string localBackups = Path.Combine(config.LocalPath, "Backups");
-                int localCount = 0;
-                if (Directory.Exists(localBackups))
-                {
-                    localCount = Directory.GetFiles(localBackups, "*", SearchOption.AllDirectories).Length;
-                }
-
-                ProcessStartInfo psi = new ProcessStartInfo();
-                psi.FileName = config.RclonePath;
-                psi.Arguments = $"--config \"{rcloneConfigPath}\" lsd {remoteFull}/Backups";
-                psi.UseShellExecute = false;
-                psi.RedirectStandardOutput = true;
-                psi.CreateNoWindow = true;
-
-                using (Process p = Process.Start(psi))
-                {
-                    string output = p.StandardOutput.ReadToEnd();
-                    p.WaitForExit(5000);
-
-                    int remoteCount = 0;
-                    foreach (char c in output)
-                    {
-                        if (c == '\n') remoteCount++;
-                    }
-
-                    return Math.Abs(localCount - remoteCount) > 2;
-                }
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private void RunRcloneSync(string direction)
-        {
-            isSyncing = true;
+         //   isSyncing = true;
             SetStatus("Syncing");
 
             try
@@ -365,6 +354,109 @@ namespace LightroomSync
             }
         }
 
+        // Prüft mit einem rclone bisync Dry-Run ob Änderungen in den Backups vorliegen, die synchronisiert werden müssten
+        private bool CheckBackup()
+        {
+            try
+            {
+                // 1. Remote-Pfad zusammenbauen
+                // Erstellt den kompletten Remote-Pfad, z.B. synology:Lightroom
+                string remoteFull = config.RemoteName;
+                if (!string.IsNullOrEmpty(config.RemotePath))
+                    remoteFull += ":" + config.RemotePath; //synology:Lightroom
+
+                // Dynamischer lokaler Backups-Pfad
+                string includeBackups = $"--include \"{config.BackupsRelativePath}/**\" --include \"{config.BackupsRelativePath}/*/**\" --exclude \"*\"";
+
+                //Debug Adresspfad
+                Log.Debug($"Backup Check: {config.LocalPath}/{config.BackupsRelativePath} <-> {remoteFull}/{config.BackupsRelativePath}");
+
+                // Temporäre Log-Datei für rclone-Ausgabe im Programm-Ordner
+                string tempLog = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "rclone_temp.log");
+
+                // DRY-RUN: Prüfen ob Änderungen vorhanden sind
+                ProcessStartInfo psi = new ProcessStartInfo(); //Startet einen neuen Prozess (rclone) unsichtbar im Hintergrund
+                psi.FileName = config.RclonePath;
+                psi.Arguments = $"--config \"{rcloneConfigPath}\" bisync \"{config.LocalPath}\" {remoteFull} --compare modtime,size --metadata --log-file \"{tempLog}\" --log-level INFO --dry-run {includeBackups}";
+                psi.UseShellExecute = false; //Direkter Prozessstart
+                psi.RedirectStandardOutput = true; //Ausgabe abfangen
+                psi.RedirectStandardError = true;
+                psi.CreateNoWindow = true;  //Kein Fenster öffnen
+
+                using (Process p = Process.Start(psi))
+                {
+                    p.WaitForExit(WATCHDOG_TIME);
+                }
+
+                // Log-Datei auf Transfers prüfen
+                if (File.Exists(tempLog))
+                {
+                    string[] lines = File.ReadAllLines(tempLog);
+                    foreach (string line in lines)
+                    {
+                        string trimmed = line.Trim();
+                        if ((trimmed.Contains("Transferred:") && !trimmed.Contains("0 B / 0 B")) ||
+                            trimmed.Contains("Copied") ||
+                            trimmed.Contains("Deleted:"))
+                        {
+                            Log.Info("Backups: Änderungen erkannt (Dry-Run)");
+                            return true;
+                        }
+                    }
+                }
+
+                Log.Info("Backups: Keine Änderungen erkannt");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Backups-Check-Fehler: {ex.Message}");
+                return false;
+            }
+        }        
+
+        private void SyncBackups()
+        {
+            try
+            {
+                // 1. Remote-Pfad zusammenbauen
+                //Erstellt den kompletten Remote-Pfad, z.B. synology:Lightroom
+                string remoteFull = config.RemoteName;
+                if (!string.IsNullOrEmpty(config.RemotePath))
+                    remoteFull += ":" + config.RemotePath; //synology:Lightroom
+
+                // Dynamischer lokaler Backups-Pfad
+                string includeBackups = $"--include \"{config.BackupsRelativePath}/**\" --include \"{config.BackupsRelativePath}/*/**\" --exclude \"*\"";
+
+                //Debug Adresspfad
+                Log.Debug($"Backup Sync: {config.LocalPath}/{config.BackupsRelativePath} <-> {remoteFull}/{config.BackupsRelativePath}");
+
+                //Temporäre Log-Datei für rclone-Ausgabe im Programm-Ordner
+                string tempLog = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "rclone_temp.log");
+
+                ProcessStartInfo psi = new ProcessStartInfo(); //Startet einen neuen Prozess (rclone) unsichtbar im Hintergrund
+                psi.FileName = config.RclonePath;
+                psi.Arguments = $"--config \"{rcloneConfigPath}\" bisync \"{config.LocalPath}\" {remoteFull} --compare modtime,size --metadata --log-file \"{tempLog}\" --log-level INFO {includeBackups}";
+                psi.UseShellExecute = false; //Direkter Prozessstart
+                psi.RedirectStandardOutput = true; //Ausgabe abfangen
+                psi.RedirectStandardError = true;
+                psi.CreateNoWindow = true;  //Kein Fenster öffnen
+
+                //Prozess starten und maximal 60 Sekunden warten (Timeout)
+                using (Process p = Process.Start(psi))
+                {
+                    p.WaitForExit(WATCHDOG_TIME);
+                }
+
+                //Die Log-Datei auswerten und relevante Zeilen ins Log schreiben
+                WriteRcloneStats(tempLog);
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Backups-Fehler: {ex.Message}");
+            }
+        }
+
         private void WriteRcloneStats(string logFile)
         {
             try
@@ -401,60 +493,22 @@ namespace LightroomSync
                 }
 
                 //Löscht das Logfile
-               // File.Delete(logFile);
+               File.Delete(logFile);
             }
             catch { }
-        }
-
-        private void SyncBackups()
-        {
-            try
-            {
-                // 1. Remote-Pfad zusammenbauen
-                //Erstellt den kompletten Remote-Pfad, z.B. synology:Lightroom
-                string remoteFull = config.RemoteName;
-                if (!string.IsNullOrEmpty(config.RemotePath))
-                    remoteFull += ":" + config.RemotePath; //synology:Lightroom
-
-                // Dynamischer lokaler Backups-Pfad
-                string includeBackups = $"--include \"{config.BackupsRelativePath}/**\" --include \"{config.BackupsRelativePath}/*/**\" --exclude \"*\"";
-
-                // Debug-Ausgabe
-                Log.Info($"Backups Sync: {config.LocalPath} <-> {remoteFull}/{config.BackupsRelativePath}");
-
-                //Temporäre Log-Datei für rclone-Ausgabe im Programm-Ordner
-                string tempLog = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "rclone_temp.log");
-
-                ProcessStartInfo psi = new ProcessStartInfo(); //Startet einen neuen Prozess (rclone) unsichtbar im Hintergrund
-                psi.FileName = config.RclonePath;
-                psi.Arguments = $"--config \"{rcloneConfigPath}\" bisync \"{config.LocalPath}\" {remoteFull} --compare modtime,size --metadata --log-file \"{tempLog}\" --log-level INFO {includeBackups}";
-                psi.UseShellExecute = false; //Direkter Prozessstart
-                psi.RedirectStandardOutput = true; //Ausgabe abfangen
-                psi.RedirectStandardError = true;
-                psi.CreateNoWindow = true;  //Kein Fenster öffnen
-
-                //Prozess starten und maximal 60 Sekunden warten (Timeout)
-                using (Process p = Process.Start(psi))
-                {
-                    p.WaitForExit(60000);
-                }
-
-                //Die Log-Datei auswerten und relevante Zeilen ins Log schreiben
-                WriteRcloneStats(tempLog);
-            }
-            catch (Exception ex)
-            {
-                Log.Error($"Backups-Fehler: {ex.Message}");
-            }
-        }
+        }       
 
         private DateTime? GetLocalCatalogDate()
         {
             try
             {
+                // Sucht im lokalen Verzeichnis nach .lrcat Dateien und gibt die letzte Änderungszeit der neuesten zurück
                 string[] files = Directory.GetFiles(config.LocalPath, "*.lrcat", SearchOption.TopDirectoryOnly);
+
+                // Wenn keine .lrcat Datei gefunden → gib null zurück
                 if (files.Length == 0) return null;
 
+                // Finde die neueste Datei 
                 FileInfo newest = null;
                 foreach (string file in files)
                 {
@@ -533,10 +587,10 @@ namespace LightroomSync
             {
                 case "Standby":
                     trayIcon.Icon = iconGreen;
-                    trayIcon.Text = "Lightroom Sync - Bereit";
+                    trayIcon.Text = "Lightroom Sync - Standby";
                     break;
                 case "NoConnection":
-                    trayIcon.Icon = iconRed;
+                    trayIcon.Icon = iconWhite;
                     trayIcon.Text = "Lightroom Sync - Keine Verbindung!";
                     break;
                 case "Lock":
@@ -546,6 +600,10 @@ namespace LightroomSync
                 case "Syncing":
                     trayIcon.Icon = iconYellow;
                     trayIcon.Text = "Lightroom Sync - Synchronisiere...";
+                    break;
+                case "Error":
+                    trayIcon.Icon = iconRed;
+                    trayIcon.Text = "Lightroom Sync - Kein Katalog gefunden!";
                     break;
             }
 

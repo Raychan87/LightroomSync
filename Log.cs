@@ -3,18 +3,14 @@ using System.IO;
 
 namespace LightroomSync
 {
-    /// <summary>
-    /// Logging-Funktion für die Anwendung
-    /// Schreibt in Log-Datei im Programm-Verzeichnis
-    /// </summary>
+    // Logging-Funktion für die Anwendung
+    // Schreibt in Log-Datei im Programm-Verzeichnis
     public static class Log
     {
         private static string logFilePath;
         private static object lockObj = new object();
 
-        /// <summary>
-        /// Initialisiert den Logger mit dem Basis-Verzeichnis
-        /// </summary>
+        // Initialisiert den Logger mit dem Basis-Verzeichnis
         public static void Initialize(string baseDir)
         {
             // Erstelle Logs-Ordner wenn nicht vorhanden
@@ -29,11 +25,9 @@ namespace LightroomSync
             logFilePath = Path.Combine(logsDir, logFileName);
         }
 
-        /// <summary>
-        /// Schreibt eine Nachricht in die Log-Datei
-        /// </summary>
-        /// <param name="message">Die Nachricht</param>
-        /// <param name="level">INFO, WARN, ERROR</param>
+        // Schreibt eine Nachricht in die Log-Datei
+        // <param name="message">Die Nachricht</param>
+        // <param name="level">INFO, WARN, ERROR</param>
         public static void Write(string message, string level = "INFO")
         {
             try
@@ -56,16 +50,13 @@ namespace LightroomSync
             }
         }
 
-        /// <summary>
-        /// Convenience-Methoden für verschiedene Stufen
-        /// </summary>
+        // Convenience-Methoden für verschiedene Stufen
+        public static void Debug(string message) => Write(message, "DEBUG");
         public static void Info(string message) => Write(message, "INFO");
         public static void Warn(string message) => Write(message, "WARN");
         public static void Error(string message) => Write(message, "ERROR");
 
-        /// <summary>
         /// Formatiert eine Zeit als String
-        /// </summary>
         public static string FormatDateTime(DateTime? dt)
         {
             if (dt == null) return "";
