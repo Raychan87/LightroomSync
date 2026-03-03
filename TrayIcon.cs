@@ -30,7 +30,6 @@ namespace LightroomSync
         private Icon iconWhite;
 
         private string status = "Standby";
-//        private bool isSyncing = false;
         private bool lockWarDa = false;
 
         public TrayIcon()
@@ -101,15 +100,16 @@ namespace LightroomSync
             timer.Tick += Timer_Tick;
             timer.Start();
 
-            CheckStatus();
+            Main();
+
         }
 
         private void Timer_Tick(object sender, EventArgs e)
         {
-            CheckStatus();
+            Main();
         }
 
-        private void CheckStatus()
+        private void Main()
         {
             try
             {
@@ -347,7 +347,6 @@ namespace LightroomSync
             }
         }
 
-        // Prüft mit einem rclone bisync Dry-Run ob Änderungen in den Backups vorliegen, die synchronisiert werden müssten
         private bool CheckBackup()
         {
             try
@@ -713,6 +712,6 @@ namespace LightroomSync
                 return false;
             }
         }
-
+                
     }
 }
