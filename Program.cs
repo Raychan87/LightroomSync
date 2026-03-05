@@ -16,7 +16,7 @@ namespace LightroomSync
             Application.SetCompatibleTextRenderingDefault(false);
 
             // Startet die Anwendung mit unserem TrayIcon
-            Application.Run(new TrayIcon());
+            Application.Run(new LRSync());
         }
     }
 }

@@ -10,12 +10,12 @@ using System.Windows.Forms;
 
 namespace LightroomSync
 {
-    public class TrayIcon : ApplicationContext
+    public class LRSync : ApplicationContext
     {
         // Config
         private const int WATCHDOG_TIME = 30000; // Sekunden
         private const int DIFF_SEC = 5; // Sekunden
-        private const int REMOTE_TIMEOUT = 5; // Sekunden
+   //     private const int REMOTE_TIMEOUT = 5; // Sekunden
 
         // Variablen
         private NotifyIcon trayIcon;
@@ -32,7 +32,7 @@ namespace LightroomSync
         private string status = "Standby";
         private bool lockfile = false;
 
-        public TrayIcon()
+        public LRSync()
         {
             // ================= INITIALISIERUNG =================
             // 1. Basis-Verzeichnis holen (wo die .exe liegt)
@@ -40,7 +40,7 @@ namespace LightroomSync
 
             // Logger starten
             Log.Initialize(baseDir);
-            Log.Info("=== Lightroom Watcher gestartet ===");
+            Log.Info("========= Lightroom C. Sync gestartet =========");
 
             // rclone.conf
             string rcloneConfigPath = Path.Combine(baseDir, "rclone.conf");
@@ -261,7 +261,7 @@ namespace LightroomSync
                 }
                 Log.Debug("Backup: Check End");
                 Log.Debug("Sync loop End");
-                Log.Debug("==============================================");
+                Log.Debug("===============================================");
                 SetStatus("Standby");
 
                 // ================= 7. Wenn ein Fehler passiert,... =================
