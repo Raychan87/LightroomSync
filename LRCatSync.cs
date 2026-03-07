@@ -832,10 +832,6 @@ namespace LRCatalogSync
                     trayIcon.Text = "LR Catalog Sync - rclone.exe Fehler!";
                     break;
             }
-
-            // Hinweis: Das Statusmenü-Update wurde entfernt, da ContextMenuStrip
-            // nur vom UI-Thread aktualisiert werden kann und dies zu Cross-Thread-Fehlern führte.
-            // Das Tray-Icon Text ist die primäre Statusanzeige.
         }
 
         private Icon CreateColoredIcon(Color color)
@@ -949,7 +945,6 @@ namespace LRCatalogSync
                         }
                     }
                 }
-
                 Log.Debug("Catalog: Samba-Server read-only Status überprüft");
             }
             catch (Exception ex)

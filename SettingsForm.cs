@@ -29,7 +29,7 @@ namespace LRCatalogSync
         private void SetupControls()
         {
             this.Text = "Lightroom Catalog Sync - by Fototour-und-Technik.de";
-            this.Size = new System.Drawing.Size(510, 610);
+            this.Size = new System.Drawing.Size(510, 550);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;

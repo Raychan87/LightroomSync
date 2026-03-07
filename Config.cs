@@ -10,22 +10,22 @@ namespace LRCatalogSync
         // ==================== EIGENSCHAFTEN ====================
 
         // Lokaler Pfad zum Lightroom Ordner
-        public string LocalPath = "";
+        public string LocalPath = "C:/Benutzer/[Benutzername]/Bilder/Lightroom";
 
         // Lokaler Pfad zum Backups Ordner (für die Sicherung der Lightroom Kataloge)
-        public string BackupsLocalPath = "";
+        public string BackupsLocalPath = "C:/Benutzer/[Benutzername]/Bilder/Lightroom/[Katalogname]/Backups/";
 
         // Remote Pfad zum Backups Ordner (auf dem Samba Server)
-        public string BackupsRemotePath = "";
+        public string BackupsRemotePath = "/Ordnername/Backup/";
 
         // Aktiviert/Deaktiviert die Backup-Synchronisierung
         public bool EnableBackups = true;
 
         // IP von Remote Pfad (Samba Server)
-        public string RemoteIP = "";
+        public string RemoteIP = "xxx.xxx.xxx.xxx";
 
         // Pfad auf dem Remote (z.B. "Lightroom")
-        public string RemotePath = "";
+        public string RemotePath = "/Ordnername/";
 
         // Ordner in dem rclone.exe liegt (z.B. "./rclone" oder "C:\Program Files\rclone")
         public string RcloneFolder = "./rclone";
