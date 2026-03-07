@@ -28,7 +28,7 @@ namespace LRCatalogSync
 
         private void SetupControls()
         {
-            this.Text = "Lightroom Catalog Sync - by Fototour-und-Technik.de";
+            this.Text = "LRCatalogSync - Fototour-und-Technik.de";
             this.Size = new System.Drawing.Size(510, 550);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -47,12 +47,13 @@ namespace LRCatalogSync
             int yPos = 10;
             const int labelWidth = 125;
             const int controlWidth = 300;
+            const int lineHeightToHeading = 8;
             const int lineHeight = 25;
 
-            AddInfoText(scrollPanel, "LR Catalog Sync Einstellungen", ref yPos, 10);
-            yPos += 10;
+            AddInfoText(scrollPanel, "LRCatalogSync Einstellungen", ref yPos, 10);
+            yPos += lineHeightToHeading;
             AddInfoText(scrollPanel, "_________________________________________________________________________", ref yPos, 10);
-            yPos += lineHeight;
+            yPos += lineHeight-5;
             
             AddLabelAndTextBox(scrollPanel, "Rclone Pfad:", ref yPos, "txtRcloneFolder", config.RcloneFolder, labelWidth, controlWidth, true);
             yPos += 22;
@@ -63,9 +64,9 @@ namespace LRCatalogSync
             yPos += lineHeight;
             
             AddInfoText(scrollPanel, "Lightroom Katalog", ref yPos, 10);
-            yPos += 10;
+            yPos += lineHeightToHeading;
             AddInfoText(scrollPanel, "_________________________________________________________________________", ref yPos, 10);
-            yPos += lineHeight;
+            yPos += lineHeight - 5;
             
             AddLabelAndTextBox(scrollPanel, "Lokaler Pfad:", ref yPos, "txtLocalPath", config.LocalPath, labelWidth, controlWidth, true);
             yPos += lineHeight;
@@ -73,9 +74,9 @@ namespace LRCatalogSync
             yPos += lineHeight;
             
             AddInfoText(scrollPanel, "Lightroom Katalog Sicherungsordner", ref yPos, 10);
-            yPos += 10;
+            yPos += lineHeightToHeading;
             AddInfoText(scrollPanel, "_________________________________________________________________________", ref yPos, 10);
-            yPos += lineHeight;
+            yPos += lineHeight - 5;
             
             AddCheckBox(scrollPanel, "Sicherungsordner aktivieren", ref yPos, "chkEnableBackups", config.EnableBackups, labelWidth);
             yPos += lineHeight;
@@ -86,9 +87,9 @@ namespace LRCatalogSync
             yPos += lineHeight;
             
             AddInfoText(scrollPanel, "Samba Server Einstellungen", ref yPos, 10);
-            yPos += 10;
+            yPos += lineHeightToHeading;
             AddInfoText(scrollPanel, "________________________________________________________________________________________________", ref yPos, 10);
-            yPos += lineHeight;
+            yPos += lineHeight - 5;
             
             AddLabelAndTextBox(scrollPanel, "Remote Server IP/Name:", ref yPos, "txtRemoteIP", config.RemoteIP, labelWidth, controlWidth, false);
             yPos += lineHeight;
