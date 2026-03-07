@@ -1,1 +1,22 @@
-/bin/Debug
+# Visual Studio
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# NuGet
+packages/
+*.nupkg
+
+# Build-Ergebnisse
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+
+# IDE
+.idea/
+*.swp
