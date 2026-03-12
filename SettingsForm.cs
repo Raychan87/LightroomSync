@@ -8,18 +8,12 @@ namespace LRCatalogSync
     public partial class SettingsForm : Form
     {
         private AppConfig config;
-        private string baseDir;
-        private string configFilePath;
-        private string rcloneConfigPath;
         private string originalPassword; // Speichert das ursprüngliche verschlüsseltes Passwort
 
-        public SettingsForm(AppConfig cfg, string basePath)
+        public SettingsForm(AppConfig cfg)
         {
             InitializeComponent();
             config = cfg;
-            baseDir = basePath;
-            configFilePath = Path.Combine(baseDir, "data", "config", "LRCatSync.conf");
-            rcloneConfigPath = Path.Combine(baseDir, "data", "config", "rclone.conf");
             originalPassword = cfg.SambaPassword; // Speichern des ursprünglichen Passworts
 
             SetupControls();
@@ -368,7 +362,7 @@ namespace LRCatalogSync
                 string absoluteRcloneFolder = rcloneFolder;
                 if (!Path.IsPathRooted(rcloneFolder))
                 {
-                    absoluteRcloneFolder = Path.GetFullPath(Path.Combine(baseDir, rcloneFolder));
+                    absoluteRcloneFolder = Path.GetFullPath(Path.Combine(GlobalData.BaseDir, rcloneFolder));
                 }
 
                 string absoluteRclonePath = Path.Combine(absoluteRcloneFolder, "rclone.exe");
@@ -472,13 +466,13 @@ namespace LRCatalogSync
                 }
 
                 // Stelle sicher, dass data/config Ordner existiert
-                string configDir = Path.Combine(baseDir, "data", "config");
+                string configDir = Path.Combine(GlobalData.BaseDir, "data", "config");
                 if (!Directory.Exists(configDir))
                 {
                     Directory.CreateDirectory(configDir);
                 }
 
-                config.Save(configFilePath);
+                config.Save(GlobalData.LRCatSyncConfigPath);
                 SaveRcloneConfig();
 
                 MessageBox.Show("Einstellungen erfolgreich gespeichert!", "Erfolg", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -543,14 +537,14 @@ namespace LRCatalogSync
         {
             string[] lines = new string[]
             {
-                $"[{Const.REMOTE_NAME}]",
+                $"[{GlobalConst.REMOTE_NAME}]",
                 "type = smb",
                 $"host = {config.RemoteIP}",
                 $"user = {config.SambaUser}",
                 $"pass = {config.SambaPassword}"
             };
 
-            File.WriteAllLines(rcloneConfigPath, lines);
+            File.WriteAllLines(GlobalData.RcloneConfigPath, lines);
             Log.Debug("rclone.conf erfolgreich erstellt");
         }
 

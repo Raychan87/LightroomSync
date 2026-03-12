@@ -18,10 +18,7 @@ namespace LRCatalogSync
         private NotifyIcon trayIcon;
         private System.Windows.Forms.Timer timer;
         private AppConfig config;
-        private string baseDir;
-        private string rcloneConfigPath;
-        private string configPath;
-
+        
         private Icon iconGreen;
         private Icon iconRed;
         private Icon iconBlue;
@@ -38,25 +35,20 @@ namespace LRCatalogSync
 
         public LRCatSync()
         {
-            baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            Log.Initialize(baseDir);
+            Log.Initialize(GlobalData.BaseDir);
             Log.Info("========= LR Catalog Sync gestartet =========");
 
-            // Pfade mit neuer Struktur
-            configPath = Path.Combine(baseDir, "data", "config", "LRCatSync.conf");
-            rcloneConfigPath = Path.Combine(baseDir, "data", "config", "rclone.conf");
-
             // Config laden
-            config = AppConfig.LoadFromFile(configPath, baseDir);
+            config = AppConfig.LoadFromFile(GlobalData.LRCatSyncConfigPath, GlobalData.BaseDir);
             Log.SetLogLevel(config.LogLevel);
 
             // Falls Config nicht existiert, erstelle Ordner und speichere Standard-Config
-            if (!File.Exists(configPath))
+            if (!File.Exists(GlobalData.LRCatSyncConfigPath))
             {
-                string configDir = Path.Combine(baseDir, "data", "config");
+                string configDir = Path.Combine(GlobalData.BaseDir, "data", "config");
                 if (!Directory.Exists(configDir))
                     Directory.CreateDirectory(configDir);
-                config.Save(configPath);
+                config.Save(GlobalData.LRCatSyncConfigPath);
                 Log.Debug("Neue LRCatSync.conf erstellt mit Standard-Einstellungen");
             }
 
@@ -107,12 +99,12 @@ namespace LRCatalogSync
                 timer.Stop();
                 Log.Debug("Einstellungen geöffnet - Sync pausiert");
 
-                using (SettingsForm form = new SettingsForm(config, baseDir))
+                using (SettingsForm form = new SettingsForm(config))
                 {
                     if (form.ShowDialog() == DialogResult.OK)
                     {
                         // Config neu laden
-                        config = AppConfig.LoadFromFile(configPath, baseDir);
+                        config = AppConfig.LoadFromFile(GlobalData.LRCatSyncConfigPath, GlobalData.BaseDir);
                         Log.SetLogLevel(config.LogLevel);
                         settingsMissingLogged = false; // Zurücksetzen
                         Log.Info("Einstellungen aktualisiert");
@@ -144,7 +136,7 @@ namespace LRCatalogSync
 
             // Timer für periodische Checks (läuft im UI-Thread, aber delegiert zu Background-Thread)
             timer = new System.Windows.Forms.Timer();
-            timer.Interval = Const.CHECK_INTERVAL * 1000;
+            timer.Interval = GlobalConst.CHECK_INTERVAL * 1000;
             timer.Tick += Timer_Tick;
             timer.Start();
         }
@@ -168,7 +160,7 @@ namespace LRCatalogSync
             try
             {
                 // ================= EINSTELLUNGEN PRÜFEN =================
-                if (!File.Exists(configPath) || !File.Exists(rcloneConfigPath))
+                if (!File.Exists(GlobalData.LRCatSyncConfigPath) || !File.Exists(GlobalData.RcloneConfigPath))
                 {
                     if (!settingsMissingLogged)
                     {
@@ -221,7 +213,7 @@ namespace LRCatalogSync
                 }
 
                 // ================= 2. Netzwerk Prüfen =================
-                string remoteFull = Const.REMOTE_NAME;
+                string remoteFull = GlobalConst.REMOTE_NAME;
                 if (!string.IsNullOrEmpty(config.RemotePath))
                     remoteFull += ":" + config.RemotePath;
 
@@ -235,7 +227,7 @@ namespace LRCatalogSync
 
                 ProcessStartInfo psi = new ProcessStartInfo();
                 psi.FileName = config.RclonePath;
-                psi.Arguments = $"--config \"{rcloneConfigPath}\" lsd \"{remoteFull}\"";
+                psi.Arguments = $"--config \"{GlobalData.RcloneConfigPath}\" lsd \"{remoteFull}\"";
                 psi.UseShellExecute = false;
                 psi.RedirectStandardOutput = true;
                 psi.RedirectStandardError = true;
@@ -244,12 +236,12 @@ namespace LRCatalogSync
                 using (Process p = Process.Start(psi))
                 {
                     string output = p.StandardOutput.ReadToEnd();
-                    p.WaitForExit(Const.WATCHDOG_TIME * 1000);
+                    p.WaitForExit(GlobalConst.WATCHDOG_TIME * 1000);
                     if (p.ExitCode != 0 || output.Length < 10)
                     {
                         Log.Warn("Samba-Verbindung fehlgeschlagen");
                         Log.Debug($"rclone Pfad: {config.RclonePath}");
-                        Log.Debug($"rclone Config Pfad: {rcloneConfigPath}");
+                        Log.Debug($"rclone Config Pfad: {GlobalData.RcloneConfigPath}");
                         Log.Debug($"Remote: {remoteFull}");
                         SetStatus("rclone");
                         return;
@@ -279,13 +271,13 @@ namespace LRCatalogSync
                         // Berechne die Differenz der Änderungszeiten in Sekunden
                         double diff = Math.Round(((DateTime)localDate - (DateTime)remoteDate).TotalSeconds, 0);
 
-                        if (diff > Const.DIFF_SEC)
+                        if (diff > GlobalConst.DIFF_SEC)
                         {
                             Log.Debug("Catalog: PC New -> Upload");
                             CatalogSyncStart = true;
                             SyncDirection = "upload";
                         }
-                        else if (diff < -Const.DIFF_SEC)
+                        else if (diff < -GlobalConst.DIFF_SEC)
                         {
                             Log.Debug("Catalog: Remote New -> Download");
                             CatalogSyncStart = true;
@@ -377,7 +369,7 @@ namespace LRCatalogSync
             try
             {
                 // Erstellt den kompletten Remote-Pfad, z.B. synology:Lightroom
-                string remoteFull = Const.REMOTE_NAME;
+                string remoteFull = GlobalConst.REMOTE_NAME;
                 if (!string.IsNullOrEmpty(config.RemotePath))
                     remoteFull += ":" + config.RemotePath; //synology:Lightroom
 
@@ -387,8 +379,8 @@ namespace LRCatalogSync
                 SetCatalogReadOnly(true);
 
                 // Eindeutige Log-Datei für Katalog-Sync
-                string tempLog = Path.Combine(baseDir, "data", "logs", "rclone_catalog_sync.log");
-                string logsDir = Path.Combine(baseDir, "data", "logs");
+                string tempLog = Path.Combine(GlobalData.BaseDir, "data", "logs", "rclone_catalog_sync.log");
+                string logsDir = Path.Combine(GlobalData.BaseDir, "data", "logs");
                 if (!Directory.Exists(logsDir))
                     Directory.CreateDirectory(logsDir);
 
@@ -405,7 +397,7 @@ namespace LRCatalogSync
                 psi.FileName = config.RclonePath;
 
                 // Bestimme rclone Argumente basierend auf Preview-Einstellung und Richtung
-                string baseArgs = $"--config \"{rcloneConfigPath}\" sync";
+                string baseArgs = $"--config \"{GlobalData.RcloneConfigPath}\" sync";
                 string filterArgs = $"--filter-from \"{filterFilePath}\"";
                 string commonArgs = "--update --metadata --log-file \"{tempLog}\" --log-level INFO";
 
@@ -502,15 +494,15 @@ namespace LRCatalogSync
             {
                 bool BackupChange = false;
 
-                string remoteFull = Const.REMOTE_NAME;
+                string remoteFull = GlobalConst.REMOTE_NAME;
                 if (!string.IsNullOrEmpty(config.BackupsRemotePath))
                     remoteFull += ":" + config.BackupsRemotePath;
 
                 Log.Debug($"Backup: Pfad: {config.BackupsLocalPath} <-> {config.BackupsRemotePath}");
 
                 // Eindeutige Log-Datei für Backup-Check
-                string tempLog = Path.Combine(baseDir, "data", "logs", "rclone_backup_check.log");
-                string logsDir = Path.Combine(baseDir, "data", "logs");
+                string tempLog = Path.Combine(GlobalData.BaseDir, "data", "logs", "rclone_backup_check.log");
+                string logsDir = Path.Combine(GlobalData.BaseDir, "data", "logs");
                 if (!Directory.Exists(logsDir))
                     Directory.CreateDirectory(logsDir);
 
@@ -519,7 +511,7 @@ namespace LRCatalogSync
 
                 ProcessStartInfo psi = new ProcessStartInfo();
                 psi.FileName = config.RclonePath;
-                psi.Arguments = $"--config \"{rcloneConfigPath}\" bisync \"{config.BackupsLocalPath}\" {remoteFull} --compare modtime,size --metadata --log-file \"{tempLog}\" --log-level INFO --dry-run";
+                psi.Arguments = $"--config \"{GlobalData.RcloneConfigPath}\" bisync \"{config.BackupsLocalPath}\" {remoteFull} --compare modtime,size --metadata --log-file \"{tempLog}\" --log-level INFO --dry-run";
                 psi.UseShellExecute = false;
                 psi.RedirectStandardOutput = true;
                 psi.RedirectStandardError = true;
@@ -527,7 +519,7 @@ namespace LRCatalogSync
 
                 using (Process p = Process.Start(psi))
                 {
-                    p.WaitForExit(Const.WATCHDOG_TIME * 1000);
+                    p.WaitForExit(GlobalConst.WATCHDOG_TIME * 1000);
                 }
                 
                 // Warte kurz, bis rclone die Datei komplett freigegeben hat
@@ -560,7 +552,7 @@ namespace LRCatalogSync
 
                             ProcessStartInfo psi_resync = new ProcessStartInfo();
                             psi_resync.FileName = config.RclonePath;
-                            psi_resync.Arguments = $"--config \"{rcloneConfigPath}\" bisync \"{config.BackupsLocalPath}\" {remoteFull} --resync --metadata --log-file \"{tempLog}\" --log-level INFO";
+                            psi_resync.Arguments = $"--config \"{GlobalData.RcloneConfigPath}\" bisync \"{config.BackupsLocalPath}\" {remoteFull} --resync --metadata --log-file \"{tempLog}\" --log-level INFO";
                             psi_resync.UseShellExecute = false;
                             psi_resync.RedirectStandardOutput = true;
                             psi_resync.RedirectStandardError = true;
@@ -568,7 +560,7 @@ namespace LRCatalogSync
 
                             using (Process p = Process.Start(psi_resync))
                             {
-                                p.WaitForExit(Const.WATCHDOG_TIME * 1000);
+                                p.WaitForExit(GlobalConst.WATCHDOG_TIME * 1000);
                                 Thread.Sleep(500); // Auch hier warten
                                 if (p.ExitCode != 0)
                                 {
@@ -586,7 +578,7 @@ namespace LRCatalogSync
                             Log.Debug("rclone: große Änderung >50%, es muss mit --force gestaret werden.");
                             ProcessStartInfo psi_resync = new ProcessStartInfo();
                             psi_resync.FileName = config.RclonePath;
-                            psi_resync.Arguments = $"--config \"{rcloneConfigPath}\" bisync \"{config.BackupsLocalPath}\" {remoteFull} --force --metadata --log-file \"{tempLog}\" --log-level INFO";
+                            psi_resync.Arguments = $"--config \"{GlobalData.RcloneConfigPath}\" bisync \"{config.BackupsLocalPath}\" {remoteFull} --force --metadata --log-file \"{tempLog}\" --log-level INFO";
                             psi_resync.UseShellExecute = false;
                             psi_resync.RedirectStandardOutput = true;
                             psi_resync.RedirectStandardError = true;
@@ -594,7 +586,7 @@ namespace LRCatalogSync
 
                             using (Process p = Process.Start(psi_resync))
                             {
-                                p.WaitForExit(Const.WATCHDOG_TIME * 1000);
+                                p.WaitForExit(GlobalConst.WATCHDOG_TIME * 1000);
                                 Thread.Sleep(500); // Auch hier warten
                                 if (p.ExitCode != 0)
                                 {
@@ -666,15 +658,15 @@ namespace LRCatalogSync
         {
             try
             {
-                string remoteFull = Const.REMOTE_NAME;
+                string remoteFull = GlobalConst.REMOTE_NAME;
                 if (!string.IsNullOrEmpty(config.BackupsRemotePath))
                     remoteFull += ":" + config.BackupsRemotePath;
 
                 Log.Debug($"Backup: Pfad: {config.BackupsLocalPath} <-> {config.BackupsRemotePath}");
 
                 // Eindeutige Log-Datei für Backup-Sync
-                string tempLog = Path.Combine(baseDir, "data", "logs", "rclone_backup_sync.log");
-                string logsDir = Path.Combine(baseDir, "data", "logs");
+                string tempLog = Path.Combine(GlobalData.BaseDir, "data", "logs", "rclone_backup_sync.log");
+                string logsDir = Path.Combine(GlobalData.BaseDir, "data", "logs");
                 if (!Directory.Exists(logsDir))
                     Directory.CreateDirectory(logsDir);
 
@@ -683,7 +675,7 @@ namespace LRCatalogSync
 
                 ProcessStartInfo psi = new ProcessStartInfo();
                 psi.FileName = config.RclonePath;
-                psi.Arguments = $"--config \"{rcloneConfigPath}\" bisync \"{config.BackupsLocalPath}\" {remoteFull} --compare modtime,size --metadata --log-file \"{tempLog}\" --log-level INFO";
+                psi.Arguments = $"--config \"{GlobalData.RcloneConfigPath}\" bisync \"{config.BackupsLocalPath}\" {remoteFull} --compare modtime,size --metadata --log-file \"{tempLog}\" --log-level INFO";
                 psi.UseShellExecute = false;
                 psi.RedirectStandardOutput = true;
                 psi.RedirectStandardError = true;
@@ -797,13 +789,13 @@ namespace LRCatalogSync
         {
             try
             {
-                string remoteFull = Const.REMOTE_NAME;
+                string remoteFull = GlobalConst.REMOTE_NAME;
                 if (!string.IsNullOrEmpty(config.RemotePath))
                     remoteFull += ":" + config.RemotePath;
 
                 ProcessStartInfo psi = new ProcessStartInfo();
                 psi.FileName = config.RclonePath;
-                psi.Arguments = $"--config \"{rcloneConfigPath}\" lsl {remoteFull} --include \"*.lrcat\"";
+                psi.Arguments = $"--config \"{GlobalData.RcloneConfigPath}\" lsl {remoteFull} --include \"*.lrcat\"";
                 psi.UseShellExecute = false;
                 psi.RedirectStandardOutput = true;
                 psi.RedirectStandardError = true;
@@ -984,14 +976,14 @@ namespace LRCatalogSync
         {
             try
             {
-                string remoteFull = Const.REMOTE_NAME;
+                string remoteFull = GlobalConst.REMOTE_NAME;
                 if (!string.IsNullOrEmpty(config.RemotePath))
                     remoteFull += ":" + config.RemotePath;
 
                 // Finde die Remote *.lrcat Datei
                 ProcessStartInfo psi = new ProcessStartInfo();
                 psi.FileName = config.RclonePath;
-                psi.Arguments = $"--config \"{rcloneConfigPath}\" lsl {remoteFull} --include \"*.lrcat\"";
+                psi.Arguments = $"--config \"{GlobalData.RcloneConfigPath}\" lsl {remoteFull} --include \"*.lrcat\"";
                 psi.UseShellExecute = false;
                 psi.RedirectStandardOutput = true;
                 psi.RedirectStandardError = true;
