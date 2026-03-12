@@ -543,7 +543,7 @@ namespace LRCatalogSync
         {
             string[] lines = new string[]
             {
-                "[synology]",
+                $"[{Const.REMOTE_NAME}]",
                 "type = smb",
                 $"host = {config.RemoteIP}",
                 $"user = {config.SambaUser}",

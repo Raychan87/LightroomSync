@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Resources;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -37,3 +38,4 @@ using System.Runtime.InteropServices;
 
 // Informational Version (z.B. für Beta-Hinweis)
 [assembly: AssemblyInformationalVersion("0.9.0-beta3")]
+[assembly: NeutralResourcesLanguage("de-DE")]

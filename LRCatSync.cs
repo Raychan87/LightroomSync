@@ -14,12 +14,6 @@ namespace LRCatalogSync
 {
     public class LRCatSync : ApplicationContext
     {
-        // Config
-        private const int WATCHDOG_TIME = 30000; // Sekunden
-        private const int DIFF_SEC = 5; // Sekunden                                       
-        private const int CHECK_INTERVAL = 5; // Sekunden - statt aus Config
-        private const string REMOTE_NAME = "synology"; // Aus rclone.conf
-
         // Variablen
         private NotifyIcon trayIcon;
         private System.Windows.Forms.Timer timer;
@@ -150,7 +144,7 @@ namespace LRCatalogSync
 
             // Timer für periodische Checks (läuft im UI-Thread, aber delegiert zu Background-Thread)
             timer = new System.Windows.Forms.Timer();
-            timer.Interval = CHECK_INTERVAL * 1000;
+            timer.Interval = Const.CHECK_INTERVAL * 1000;
             timer.Tick += Timer_Tick;
             timer.Start();
         }
@@ -227,7 +221,7 @@ namespace LRCatalogSync
                 }
 
                 // ================= 2. Netzwerk Prüfen =================
-                string remoteFull = REMOTE_NAME;
+                string remoteFull = Const.REMOTE_NAME;
                 if (!string.IsNullOrEmpty(config.RemotePath))
                     remoteFull += ":" + config.RemotePath;
 
@@ -250,7 +244,7 @@ namespace LRCatalogSync
                 using (Process p = Process.Start(psi))
                 {
                     string output = p.StandardOutput.ReadToEnd();
-                    p.WaitForExit(WATCHDOG_TIME);
+                    p.WaitForExit(Const.WATCHDOG_TIME * 1000);
                     if (p.ExitCode != 0 || output.Length < 10)
                     {
                         Log.Warn("Samba-Verbindung fehlgeschlagen");
@@ -285,13 +279,13 @@ namespace LRCatalogSync
                         // Berechne die Differenz der Änderungszeiten in Sekunden
                         double diff = Math.Round(((DateTime)localDate - (DateTime)remoteDate).TotalSeconds, 0);
 
-                        if (diff > DIFF_SEC)
+                        if (diff > Const.DIFF_SEC)
                         {
                             Log.Debug("Catalog: PC New -> Upload");
                             CatalogSyncStart = true;
                             SyncDirection = "upload";
                         }
-                        else if (diff < -DIFF_SEC)
+                        else if (diff < -Const.DIFF_SEC)
                         {
                             Log.Debug("Catalog: Remote New -> Download");
                             CatalogSyncStart = true;
@@ -383,7 +377,7 @@ namespace LRCatalogSync
             try
             {
                 // Erstellt den kompletten Remote-Pfad, z.B. synology:Lightroom
-                string remoteFull = REMOTE_NAME;
+                string remoteFull = Const.REMOTE_NAME;
                 if (!string.IsNullOrEmpty(config.RemotePath))
                     remoteFull += ":" + config.RemotePath; //synology:Lightroom
 
@@ -508,7 +502,7 @@ namespace LRCatalogSync
             {
                 bool BackupChange = false;
 
-                string remoteFull = REMOTE_NAME;
+                string remoteFull = Const.REMOTE_NAME;
                 if (!string.IsNullOrEmpty(config.BackupsRemotePath))
                     remoteFull += ":" + config.BackupsRemotePath;
 
@@ -533,7 +527,7 @@ namespace LRCatalogSync
 
                 using (Process p = Process.Start(psi))
                 {
-                    p.WaitForExit(WATCHDOG_TIME);
+                    p.WaitForExit(Const.WATCHDOG_TIME * 1000);
                 }
                 
                 // Warte kurz, bis rclone die Datei komplett freigegeben hat
@@ -574,7 +568,7 @@ namespace LRCatalogSync
 
                             using (Process p = Process.Start(psi_resync))
                             {
-                                p.WaitForExit(WATCHDOG_TIME);
+                                p.WaitForExit(Const.WATCHDOG_TIME * 1000);
                                 Thread.Sleep(500); // Auch hier warten
                                 if (p.ExitCode != 0)
                                 {
@@ -600,7 +594,7 @@ namespace LRCatalogSync
 
                             using (Process p = Process.Start(psi_resync))
                             {
-                                p.WaitForExit(WATCHDOG_TIME);
+                                p.WaitForExit(Const.WATCHDOG_TIME * 1000);
                                 Thread.Sleep(500); // Auch hier warten
                                 if (p.ExitCode != 0)
                                 {
@@ -672,7 +666,7 @@ namespace LRCatalogSync
         {
             try
             {
-                string remoteFull = REMOTE_NAME;
+                string remoteFull = Const.REMOTE_NAME;
                 if (!string.IsNullOrEmpty(config.BackupsRemotePath))
                     remoteFull += ":" + config.BackupsRemotePath;
 
@@ -803,7 +797,7 @@ namespace LRCatalogSync
         {
             try
             {
-                string remoteFull = REMOTE_NAME;
+                string remoteFull = Const.REMOTE_NAME;
                 if (!string.IsNullOrEmpty(config.RemotePath))
                     remoteFull += ":" + config.RemotePath;
 
@@ -990,7 +984,7 @@ namespace LRCatalogSync
         {
             try
             {
-                string remoteFull = REMOTE_NAME;
+                string remoteFull = Const.REMOTE_NAME;
                 if (!string.IsNullOrEmpty(config.RemotePath))
                     remoteFull += ":" + config.RemotePath;
 
